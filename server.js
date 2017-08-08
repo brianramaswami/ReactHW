@@ -1,60 +1,84 @@
-// Web Scraper Homework Solution Example
-// (be sure to watch the video to see
-// how to operate the site in the browser)
-// -/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/
+var express = require('express');
+var bodyParser = require('body-parser');
+var logger = require('morgan');
+var mongoose = require('mongoose');
 
-// Require our dependencies
-var express = require("express");
-var mongoose = require("mongoose");
-var expressHandlebars = require("express-handlebars");
-var bodyParser = require("body-parser");
+var Article = require('./models/Article.js');
 
-// Set up our port to be either the host's designated port, or 3000
+var app = express();
 var PORT = process.env.PORT || 3000;
 
-// Instantiate our Express App
-var app = express();
+// Run Morgan for Logging
+app.use(logger('dev'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.text());
+app.use(bodyParser.json({type:'application/vnd.api+json'}));
 
-// Set up an Express Router
-var router = express.Router();
+app.use(express.static('./public'));
 
-// Require our routes file pass our router object
-require("./config/routes")(router);
+//mongoose.connect('mongodb://localhost/nytreact');
+mongoose.connect("mongodb://localhost/nytreact2");
+console.log("test");
 
-// Designate our public folder as a static directory
-app.use(express.static(__dirname + "/public"));
+var db = mongoose.connection;
 
-// Connect Handlebars to our Express app
-app.engine("handlebars", expressHandlebars({
-  defaultLayout: "main"
-}));
-app.set("view engine", "handlebars");
+db.on('error', function (err) {
+  console.log('Mongoose Error: ', err);
+});
+console.log("test2");
+db.once('open', function () {
+  console.log('Mongoose connection successful.');
+});
+console.log("test3");
+app.get('/', function(req, res){
+  res.sendFile('./public/index.html');
+})
 
-// Use bodyParser in our app
-app.use(bodyParser.urlencoded({
-  extended: false
-}));
+app.get('/api/saved', function(req, res) {
 
-// Have every request go through our router middleware
-app.use(router);
+  Article.find({})
+    .exec(function(err, doc){
 
-
-// If deployed, use the deployed database. Otherwise use the local mongoHeadlines database
-var db = process.env.MONGODB_URI || "mongodb://localhost/nytreact";
-
-// Connect mongoose to our database
-mongoose.connect(db, function(error) {
-  // Log any errors connecting with mongoose
-  if (error) {
-    console.log(error);
-  }
-  // Or log a success message
-  else {
-    console.log("mongoose connection is successful");
-  }
+      if(err){
+        console.log(err);
+      }
+      else {
+        res.send(doc);
+      }
+    })
 });
 
-// Listen on the port
+app.post('/api/saved', function(req, res){
+
+  var newArticle = new Article({
+    title: req.body.title,
+    date: req.body.date,
+    url: req.body.url
+  });
+
+  newArticle.save(function(err, doc){
+    if(err){
+      console.log(err);
+      res.send(err);
+    } else {
+      res.json(doc);
+    }
+  });
+
+});
+
+app.delete('/api/saved/:id', function(req, res){
+
+  Article.find({'_id': req.params.id}).remove()
+    .exec(function(err, doc) {
+      res.send(doc);
+  });
+
+});
+
+
+console.log("test4");
 app.listen(PORT, function() {
-  console.log("Listening on port:" + PORT);
+  console.log("App listening on PORT: " + PORT);
 });
