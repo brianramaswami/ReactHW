@@ -1,3 +1,3 @@
 # ReactHW
 
-#Working off example solution from previous HW and prev #New york times assignments.
+#Working off class New york times assignments.
